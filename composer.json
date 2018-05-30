@@ -11,8 +11,10 @@
         }
     ],
     "require": {
-        "php": ">=5.3.3",
-        "symfony/swiftmailer-bundle": "^3.0"
+        "php": ">=7.0.0",
+        "symfony/swiftmailer-bundle": "^3.0",
+        "doctrine/common": "^2.8",
+        "symfony/doctrine-bridge": "^4.1"
     },
     "autoload": {
         "psr-0": { 
