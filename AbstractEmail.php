@@ -29,7 +29,7 @@ abstract class AbstractEmail implements EmailInterface
     abstract public function getEnvironment();
 
     /**
-     * @param $message string Serialized \Swift_Mime_Message
+     * @param $message string Serialized \Swift_Mime_SimpleMessage
      */
     abstract public function setMessage($message);
 

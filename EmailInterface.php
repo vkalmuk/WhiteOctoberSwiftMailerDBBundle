@@ -29,7 +29,7 @@ interface EmailInterface
     public function getEnvironment();
 
     /**
-     * @param $message string Serialized \Swift_Mime_Message
+     * @param $message string Serialized \Swift_Mime_SimpleMessage
      */
     public function setMessage($message);
 
