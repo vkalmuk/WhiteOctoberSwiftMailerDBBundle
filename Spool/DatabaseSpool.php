@@ -2,6 +2,7 @@
 
 namespace WhiteOctober\SwiftMailerDBBundle\Spool;
 
+use AbstractEmail;
 use Doctrine\Common\Persistence\ManagerRegistry;
 use Doctrine\Common\Persistence\ObjectManager;
 use Symfony\Bridge\Doctrine\RegistryInterface;
@@ -19,7 +20,7 @@ class DatabaseSpool extends \Swift_ConfigurableSpool
     protected $doc;
 
     /**
-     * @var string
+     * @var AbstractEmail
      */
     protected $entityClass;
 
@@ -34,18 +35,22 @@ class DatabaseSpool extends \Swift_ConfigurableSpool
     protected $environment;
 
     /**
+     * @var ObjectManager
+     */
+    protected $em;
+
+    /**
      * @param RegistryInterface $doc
-     * @param string        $entityClass
-     * @param string        $environment
-     * @param bool          $keepSentMessages
-     *
-     * @throws \InvalidArgumentException
+     * @param AbstractEmail $entityClass
+     * @param string $environment
+     * @param bool $keepSentMessages
      */
     public function __construct(RegistryInterface $doc, $entityClass, $environment, $keepSentMessages = false)
     {
         $this->doc              = $doc;
         $this->keepSentMessages = $keepSentMessages;
 
+        /** @var AbstractEmail $obj */
         $obj = new $entityClass;
         if (!$obj instanceof EmailInterface) {
             throw new \InvalidArgumentException("The entity class '{$entityClass}'' does not extend from EmailInterface");
@@ -53,6 +58,7 @@ class DatabaseSpool extends \Swift_ConfigurableSpool
 
         $this->entityClass = $entityClass;
         $this->environment = $environment;
+        $this->em = $this->getManager();
     }
 
     /**
@@ -82,18 +88,18 @@ class DatabaseSpool extends \Swift_ConfigurableSpool
     /**
      * Queues a message.
      *
-     * @param \Swift_Mime_Message $message The message to store
+     * @param \Swift_Mime_SimpleMessage $message The message to store
      * @return boolean Whether the operation has succeeded
-     * @throws \Swift_IoException if the persist fails
      */
-    public function queueMessage(\Swift_Mime_Message $message)
+    public function queueMessage(\Swift_Mime_SimpleMessage $message)
     {
+        /** @var AbstractEmail $mailObject */
         $mailObject = new $this->entityClass;
         $mailObject->setMessage(serialize($message));
         $mailObject->setStatus(EmailInterface::STATUS_READY);
         $mailObject->setEnvironment($this->environment);
-        $this->getManager()->persist($mailObject);
-        $this->getManager()->flush();
+        $this->em->persist($mailObject);
+        $this->em->flush();
 
         return true;
     }
@@ -108,20 +114,18 @@ class DatabaseSpool extends \Swift_ConfigurableSpool
      */
     public function flushQueue(\Swift_Transport $transport, &$failedRecipients = null)
     {
-        if (!$transport->isStarted())
-        {
-            $transport->start();
-        }
-
-        $repoClass = $this->getManager()->getRepository($this->entityClass);
+        $em = $this->em;
+        $repoClass = $this->em->getRepository($this->entityClass);
         $limit = $this->getMessageLimit();
         $limit = $limit > 0 ? $limit : null;
+
+        /** @var AbstractEmail[] $emails */
         $emails = $repoClass->findBy(
-            array("status" => EmailInterface::STATUS_READY, "environment" => $this->environment),
+            array('status' => EmailInterface::STATUS_READY, 'environment' => $this->environment),
             null,
             $limit
         );
-        if (!count($emails)) {
+        if (!\count($emails)) {
             return 0;
         }
 
@@ -130,18 +134,23 @@ class DatabaseSpool extends \Swift_ConfigurableSpool
         $time = time();
         foreach ($emails as $email) {
             $email->setStatus(EmailInterface::STATUS_PROCESSING);
-            $this->getManager()->persist($email);
-            $this->getManager()->flush();
+            $em->persist($email);
+            $em->flush();
 
-            $message = unserialize($email->getMessage());
+            $message = \unserialize($email->getMessage(),null);
+
+            if (!$transport->isStarted()) {
+                $transport->start();
+            }
+
             $count += $transport->send($message, $failedRecipients);
             if ($this->keepSentMessages === true) {
                 $email->setStatus(EmailInterface::STATUS_COMPLETE);
-                $this->getManager()->persist($email);
+                $em->persist($email);
             } else {
-                $this->getManager()->remove($email);
+                $em->remove($email);
             }
-            $this->getManager()->flush();
+            $em->flush();
 
             if ($this->getTimeLimit() && (time() - $time) >= $this->getTimeLimit()) {
                 break;
@@ -154,7 +163,7 @@ class DatabaseSpool extends \Swift_ConfigurableSpool
     /**
      * @return ObjectManager
      */
-    protected function getManager()
+    protected function getManager(): ObjectManager
     {
         return $this->doc->getManagerForClass($this->entityClass);
     }

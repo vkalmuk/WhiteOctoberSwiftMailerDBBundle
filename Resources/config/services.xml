@@ -16,7 +16,6 @@
         </service>
 
         <service id="swiftmailer.spool.db" alias="white_october.swiftmailer_db.spool" />
-        <service id="swiftmailer.mailer.default.spool.db" alias="white_october.swiftmailer_db.spool" />
     </services>
 
 </container>

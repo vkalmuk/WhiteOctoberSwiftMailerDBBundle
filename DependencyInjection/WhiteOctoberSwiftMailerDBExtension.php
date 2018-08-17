@@ -24,6 +24,12 @@ class WhiteOctoberSwiftMailerDBExtension extends Extension
         // Service config
         $loader = new XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('services.xml');
+
+        $definition = $container->getParameter('swiftmailer.mailers');
+
+        foreach ((array)$definition as $mailerName => $v) {
+            $container->setAlias('swiftmailer.mailer.'.$mailerName.'.spool.db', 'white_october.swiftmailer_db.spool');
+        }
     }
 
     /**
