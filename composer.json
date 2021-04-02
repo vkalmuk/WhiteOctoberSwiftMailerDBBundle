@@ -1,5 +1,5 @@
 {
-    "name": "starstruck0207/swiftmailerdbbundle",
+    "name": "vkalmuks/swiftmailerdbbundle",
     "description": "Database spooling for SwiftMailer",
     "keywords": ["swiftmailer", "doctrine", "spool"],
     "type": "symfony-bundle",
